@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "x-scrape"
+version = "0.1.0"
+description = ""
+authors = ["felipesaadi <felipesaadisiegert@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+pandas = "^2.2.3"
+python-dotenv = "^1.0.1"
+twikit = {url = "https://github.com/d60/twikit/archive/login_fix.zip"}
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
