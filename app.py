@@ -14,7 +14,6 @@ PASSWORD = os.getenv('password')
 LIST_ID = os.getenv('list_id')
 MONGO_URI = os.getenv('MONGO_URI', 'mongodb://localhost:27017')
 
-# Initialize MongoDB client
 mongo_client = MongoClient(MONGO_URI)
 db = mongo_client['twitter_db']
 tweets_collection = db['tweets']
