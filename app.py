@@ -1,7 +1,10 @@
-import asyncio
-from twikit import Client
-from dotenv import load_dotenv
 import os
+import asyncio
+from datetime import datetime
+from dotenv import load_dotenv
+
+from twikit import Client
+from pymongo import MongoClient
 
 load_dotenv()
 
@@ -9,6 +12,12 @@ USERNAME = os.getenv('username')
 EMAIL = os.getenv('email')
 PASSWORD = os.getenv('password')
 LIST_ID = os.getenv('list_id')
+MONGO_URI = os.getenv('MONGO_URI', 'mongodb://localhost:27017')
+
+# Initialize MongoDB client
+mongo_client = MongoClient(MONGO_URI)
+db = mongo_client['twitter_db']
+tweets_collection = db['tweets']
 
 client = Client("pt-BR")
 
@@ -19,7 +28,23 @@ def print_formated_tweet(tweet):
         f'favorite count: {tweet.favorite_count}',
         f'media: {tweet.media}',
         sep='\n'
-    ) 
+    )
+
+def save_tweet_to_db(tweet):
+    tweet_data = {
+        'tweet_id': tweet.id,
+        'text': tweet.text,
+        'favorite_count': tweet.favorite_count,
+        'media': tweet.media,
+        'collected_at': datetime.utcnow()
+    }
+    
+    tweets_collection.update_one(
+        {'tweet_id': tweet.id},
+        {'$set': tweet_data},
+        upsert=True
+    )
+    print(f'Tweet {tweet.id} saved to database')
 
 async def get_tweet_by_id(id):
     tweet = await client.get_tweet_by_id(id)
@@ -27,16 +52,29 @@ async def get_tweet_by_id(id):
     print_formated_tweet(tweet)
 
 async def main():
-    # await client.login(
-    #     auth_info_1=USERNAME,
-    #     auth_info_2=EMAIL,
-    #     password=PASSWORD
-    # )
-    # client.save_cookies("cookies.json")
-    client.load_cookies('cookies.json')
+    try:
+        client.load_cookies("cookies.json")
+    except:
+        print("cookies not found, login first")
+        await client.login(
+            auth_info_1=USERNAME,
+            auth_info_2=EMAIL,
+            password=PASSWORD
+        )
+        client.save_cookies("cookies.json")
 
-    tweets = await client.get_list_tweets(LIST_ID)
-    for tweet in tweets:
-        print_formated_tweet(tweet)
-    
-asyncio.run(main())
+    while True:
+        print("\nFetching tweets...")
+        tweets = await client.get_list_tweets(LIST_ID)
+        for tweet in tweets:
+            print_formated_tweet(tweet)
+            save_tweet_to_db(tweet)
+        
+        print("\nWaiting for 1 hour before next fetch...")
+        await asyncio.sleep(3600)
+
+if __name__ == "__main__":
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print("\nProgram stopped by user")

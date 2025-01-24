@@ -10,6 +10,7 @@ python = "^3.10"
 pandas = "^2.2.3"
 python-dotenv = "^1.0.1"
 twikit = {url = "https://github.com/d60/twikit/archive/login_fix.zip"}
+pymongo = "^4.10.1"
 
 
 [build-system]
