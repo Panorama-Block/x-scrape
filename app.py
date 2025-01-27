@@ -23,19 +23,24 @@ client = Client("pt-BR")
 def print_formated_tweet(tweet):
     print(
         f'id: {tweet.id}',
+        f'username: {tweet.user.name}',
         f'text {tweet.text}',
         f'favorite count: {tweet.favorite_count}',
         f'media: {tweet.media}',
+        f'created_at: {tweet.created_at}',
+        f'created_at_datetime: {tweet.created_at_datetime}',
         sep='\n'
     )
 
 def save_tweet_to_db(tweet):
     tweet_data = {
         'tweet_id': tweet.id,
+        'username': tweet.user.name,
         'text': tweet.text,
         'favorite_count': tweet.favorite_count,
         'media': tweet.media,
-        'collected_at': datetime.utcnow()
+        'created_at': tweet.created_at,
+        'created_at_datetime': tweet.created_at_datetime
     }
     
     tweets_collection.update_one(
