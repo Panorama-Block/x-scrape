@@ -24,6 +24,7 @@ def print_formated_tweet(tweet):
     print(
         f'id: {tweet.id}',
         f'username: {tweet.user.name}',
+        f'user image: {tweet.user.profile_image_url}',
         f'text {tweet.text}',
         f'favorite count: {tweet.favorite_count}',
         f'media: {tweet.media}',
@@ -36,6 +37,7 @@ def save_tweet_to_db(tweet):
     tweet_data = {
         'tweet_id': tweet.id,
         'username': tweet.user.name,
+        'user_image': tweet.user.profile_image_url,
         'text': tweet.text,
         'favorite_count': tweet.favorite_count,
         'media': tweet.media,
