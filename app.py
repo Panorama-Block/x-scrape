@@ -8,10 +8,10 @@ from pymongo import MongoClient
 
 load_dotenv()
 
-USERNAME = os.getenv('username')
-EMAIL = os.getenv('email')
-PASSWORD = os.getenv('password')
-LIST_ID = os.getenv('list_id')
+USERNAME = os.getenv('USERNAME')
+EMAIL = os.getenv('EMAIL')
+PASSWORD = os.getenv('PASSWORD')
+LIST_ID = os.getenv('LIST_ID')
 MONGO_URI = os.getenv('MONGO_URI', 'mongodb://localhost:27017')
 
 mongo_client = MongoClient(MONGO_URI)
