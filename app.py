@@ -70,14 +70,18 @@ async def main():
         client.save_cookies("cookies.json")
 
     while True:
-        print("\nFetching tweets...")
-        tweets = await client.get_list_tweets(LIST_ID)
-        for tweet in tweets:
-            print_formated_tweet(tweet)
-            save_tweet_to_db(tweet)
-        
-        print("\nWaiting for 1 hour before next fetch...")
-        await asyncio.sleep(3600)
+        try:
+            print("\nFetching tweets...")
+            tweets = await client.get_list_tweets(LIST_ID)
+            for tweet in tweets:
+                print_formated_tweet(tweet)
+                save_tweet_to_db(tweet)
+            
+            print("\nWaiting for 1 hour before next fetch...")
+            await asyncio.sleep(3600)
+        except Exception as e:
+            print(f"Error: {e}")
+            await asyncio.sleep(5)
 
 if __name__ == "__main__":
     try:
