@@ -58,18 +58,18 @@ async def get_tweet_by_id(id):
     print_formated_tweet(tweet)
 
 async def main():
-    try:
-        client.load_cookies("cookies.json")
-    except:
-        print("cookies not found, login first")
-        await client.login(
-            auth_info_1=USERNAME,
-            auth_info_2=EMAIL,
-            password=PASSWORD
-        )
-        client.save_cookies("cookies.json")
-
     while True:
+        try:
+            client.load_cookies("cookies.json")
+        except:
+            print("cookies not found, login first")
+            await client.login(
+                auth_info_1=USERNAME,
+                auth_info_2=EMAIL,
+                password=PASSWORD
+            )
+            client.save_cookies("cookies.json")
+
         try:
             print("\nFetching tweets...")
             tweets = await client.get_list_tweets(LIST_ID)
@@ -85,6 +85,7 @@ async def main():
 
 if __name__ == "__main__":
     try:
-        asyncio.run(main())
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(main())
     except KeyboardInterrupt:
         print("\nProgram stopped by user")
