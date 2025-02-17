@@ -8,6 +8,18 @@ from dotenv import load_dotenv
 from twikit import Client
 from pymongo import MongoClient
 
+import logging
+import signal
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('app.log'),
+        logging.StreamHandler()
+    ]
+)
+
 load_dotenv()
 
 USERNAME = os.getenv('USERNAME')
@@ -115,6 +127,8 @@ async def get_tweet_by_id(id):
     return tweet
 
 async def post_intro_tweet_job():
+    print("running intro tweet job")
+    
     try:
         client.load_cookies("cookies.json")
     except:
@@ -133,6 +147,8 @@ async def post_intro_tweet_job():
     print(f'Intro tweet {new_tweet.id} posted')
             
 async def post_summary_tweet_job():
+    print("running summary tweet job")
+    
     try:
         client.load_cookies("cookies.json")
     except:
@@ -146,14 +162,15 @@ async def post_summary_tweet_job():
 
     try:
         tweet_data = get_new_tweet()
-        
     
         if tweet_data:
+            last_tweet_id = None
             for part in tweet_data['parts']:
-                new_tweet = await client.create_tweet(part)
+                new_tweet = await client.create_tweet(part, reply_to=last_tweet_id)
+                last_tweet_id = new_tweet.id
                 save_posted_tweet_to_db(new_tweet)
                 print('Tweet part posted successfully')
-                await asyncio.sleep(3)
+                await asyncio.sleep(5)
             
             tweets_zico_collection.update_one(
                 {'_id': tweet_data['tweet_id']},
@@ -164,6 +181,8 @@ async def post_summary_tweet_job():
         print(f"Error in tweet job: {e}")
 
 async def hourly_job():
+    print("running hourly job")
+    
     try:
         client.load_cookies("cookies.json")
     except:
@@ -186,19 +205,44 @@ async def hourly_job():
         await asyncio.sleep(5)
 
 async def main():
-    load_dotenv()
+    running = True
     
-    schedule.every().day.at("12:00").do(lambda: asyncio.run(post_intro_tweet_job()))
-    schedule.every().day.at("15:00").do(lambda: asyncio.run(post_summary_tweet_job()))
+    def signal_handler():
+        nonlocal running
+        running = False
+        logging.info("Stopping scheduler...")
     
-    schedule.every().hour.do(lambda: asyncio.run(hourly_job()))
+    for sig in (signal.SIGINT, signal.SIGTERM):
+        asyncio.get_event_loop().add_signal_handler(sig, signal_handler)
     
-    # await post_intro_tweet_job()
-    # await post_summary_tweet_job()
+    async def check_schedule():
+        while running:
+            try:
+                for job in schedule.get_jobs():
+                    if job.should_run:
+                        try:
+                            # ... seu código existente ...
+                            logging.info(f"Job {job.job_func.__name__} running")
+                        except Exception as e:
+                            logging.error(f"Error running job {job.job_func.__name__}: {e}")
+                            await asyncio.sleep(300)  # retry em 5 minutos
+                            continue
+                
+                # Adiciona monitoramento do próximo job
+                next_job = min((job for job in schedule.get_jobs()), key=lambda j: j.next_run)
+                if next_job:
+                    logging.info(f"Next scheduled job: {next_job.job_func.__name__} at {next_job.next_run}")
+                
+                await asyncio.sleep(60)
+            except Exception as e:
+                logging.error(f"Error in main loop: {e}")
+                await asyncio.sleep(60)
     
-    while True:
-        schedule.run_pending()
-        await asyncio.sleep(60)
+    # schedule.every().day.at("12:00").do(post_intro_tweet_job)
+    schedule.every().day.at("15:00").do(post_summary_tweet_job)
+    schedule.every().hour.do(hourly_job)
+    
+    await check_schedule()
 
 if __name__ == "__main__":
     asyncio.run(main())
