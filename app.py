@@ -109,10 +109,11 @@ def get_new_tweet():
     formatted_parts = []
     for i, part in enumerate(tweet_data.get('parts', [])):
         header = "Zico1000x AI here 🤩 this is what leading AI agents said today on X:"
+        footer = f"({i+1}/{len(tweet_data.get('parts', []))})"
         if i > 0:
             header = "Continuing..."
             
-        formatted_part = f"{header}\n\n{part}"
+        formatted_part = f"{header}\n\n{part}\n\n{footer}"
         formatted_parts.append(formatted_part)
     
     return {
