@@ -1,3 +1,4 @@
+from itertools import count
 import os
 import asyncio
 import schedule
@@ -121,6 +122,20 @@ def get_new_tweet():
         'tweet_id': tweet_data['_id']
     }
 
+async def get_posted_tweets():
+    zico_id = await client.get_user_by_screen_name('ZICO1000x')
+    tweet = await client.get_user_tweets(zico_id, count=1)
+    
+    if tweet:
+        save_posted_tweet_to_db(tweet)
+        print(f'Posted tweet {tweet.id} saved to database')
+        
+        for reply in tweet.replies:
+            existing_posted_tweet = posted_tweets_zico_collection.find_one({'text': reply.text})
+            if not existing_posted_tweet:
+                save_posted_tweet_to_db(reply)
+                print(f'Posted tweet {reply.id} saved to database')
+
 async def get_tweet_by_id(id):
     tweet = await client.get_tweet_by_id(id)
 
@@ -222,14 +237,12 @@ async def main():
                 for job in schedule.get_jobs():
                     if job.should_run:
                         try:
-                            # ... seu código existente ...
                             logging.info(f"Job {job.job_func.__name__} running")
                         except Exception as e:
                             logging.error(f"Error running job {job.job_func.__name__}: {e}")
                             await asyncio.sleep(300)  # retry em 5 minutos
                             continue
                 
-                # Adiciona monitoramento do próximo job
                 next_job = min((job for job in schedule.get_jobs()), key=lambda j: j.next_run)
                 if next_job:
                     logging.info(f"Next scheduled job: {next_job.job_func.__name__} at {next_job.next_run}")
@@ -239,10 +252,8 @@ async def main():
                 logging.error(f"Error in main loop: {e}")
                 await asyncio.sleep(60)
     
-    # schedule.every().day.at("12:00").do(post_intro_tweet_job)
-    schedule.every().day.at("15:00").do(post_summary_tweet_job)
     schedule.every().hour.do(hourly_job)
-    
+    schedule.every().hour.do(get_posted_tweets)
     await check_schedule()
 
 if __name__ == "__main__":
