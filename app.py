@@ -123,18 +123,68 @@ def get_new_tweet():
     }
 
 async def get_posted_tweets():
-    zico_id = await client.get_user_by_screen_name('ZICO1000x')
-    tweet = await client.get_user_tweets(zico_id, count=1)
+    try:
+        client.load_cookies("cookies.json")
+    except:
+        print("cookies not found, login first")
+        await client.login(
+            auth_info_1=USERNAME,
+            auth_info_2=EMAIL,
+            password=PASSWORD
+        )
+        client.save_cookies("cookies.json")
+
+    zico_list_id = '1897787948617134248'
     
-    if tweet:
-        save_posted_tweet_to_db(tweet)
-        print(f'Posted tweet {tweet.id} saved to database')
+    try:
+        list_tweets = await client.get_list_tweets(zico_list_id)
+        while list_tweets:
+            for tweet in list_tweets:
+                print(tweet.text)
+                print(tweet.reply_count)
+                
+                replies = tweet.replies
+
+                while replies:
+                    for reply in replies:
+                        print(reply.text)
+                    replies = await replies.next()
+                # save_posted_tweet_to_db(tweet)
+                # print(f'Posted tweet {tweet.id} saved to database')
+                # print(tweet.text)
+            list_tweets = await list_tweets.next()
+
+    except Exception as e:
+        logging.error(f"Error in get_posted_tweets: {e}")
+        await asyncio.sleep(5)
+
+async def get_posted_tweets_2():
+    zico_id = await client.get_user_by_screen_name('ZICO1000x')
+    tweets = await client.get_user_tweets(zico_id)
+    
+    if tweets:
+        for tweet in tweets:
+            save_posted_tweet_to_db(tweet)
+            print(f'Posted tweet {tweet.id} saved to database')
+            
+            for reply in tweet.replies:
+                existing_posted_tweet = posted_tweets_zico_collection.find_one({'text': reply.text})
+                if not existing_posted_tweet:
+                    save_posted_tweet_to_db(reply)
+                    print(f'Posted tweet {reply.id} saved to database')
+
+        more_tweets = await tweets.next()
         
-        for reply in tweet.replies:
-            existing_posted_tweet = posted_tweets_zico_collection.find_one({'text': reply.text})
-            if not existing_posted_tweet:
-                save_posted_tweet_to_db(reply)
-                print(f'Posted tweet {reply.id} saved to database')
+        if more_tweets:
+            for tweet in more_tweets:
+                save_posted_tweet_to_db(tweet)
+                print(f'Posted tweet {tweet.id} saved to database')
+                
+                for reply in tweet.replies:
+                    existing_posted_tweet = posted_tweets_zico_collection.find_one({'text': reply.text})
+                    if not existing_posted_tweet:
+                        save_posted_tweet_to_db(reply)
+                        print(f'Posted tweet {reply.id} saved to database')
 
 async def get_tweet_by_id(id):
     tweet = await client.get_tweet_by_id(id)
@@ -252,9 +302,10 @@ async def main():
                 logging.error(f"Error in main loop: {e}")
                 await asyncio.sleep(60)
     
-    schedule.every().hour.do(hourly_job)
-    schedule.every().hour.do(get_posted_tweets)
-    await check_schedule()
+    await get_posted_tweets()
+    # schedule.every().hour.do(hourly_job)
+    # schedule.every().hour.do(get_posted_tweets)
+    # await check_schedule()
 
 if __name__ == "__main__":
     asyncio.run(main())
