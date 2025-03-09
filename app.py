@@ -134,57 +134,19 @@ async def get_posted_tweets():
         )
         client.save_cookies("cookies.json")
 
-    zico_list_id = '1897787948617134248'
-    
     try:
-        list_tweets = await client.get_list_tweets(zico_list_id)
-        while list_tweets:
-            for tweet in list_tweets:
+        zico_id = '1883142650175614976'
+        tweets = await client.get_user_tweets(zico_id, 'Tweets')
+        
+        if tweets:
+            for tweet in tweets:
+                save_posted_tweet_to_db(tweet)
                 print(tweet.text)
-                print(tweet.reply_count)
-                
-                replies = tweet.replies
-
-                while replies:
-                    for reply in replies:
-                        print(reply.text)
-                    replies = await replies.next()
-                # save_posted_tweet_to_db(tweet)
-                # print(f'Posted tweet {tweet.id} saved to database')
-                # print(tweet.text)
-            list_tweets = await list_tweets.next()
+                print(f'Posted tweet {tweet.id} saved to database')
 
     except Exception as e:
         logging.error(f"Error in get_posted_tweets: {e}")
         await asyncio.sleep(5)
-
-async def get_posted_tweets_2():
-    zico_id = await client.get_user_by_screen_name('ZICO1000x')
-    tweets = await client.get_user_tweets(zico_id)
-    
-    if tweets:
-        for tweet in tweets:
-            save_posted_tweet_to_db(tweet)
-            print(f'Posted tweet {tweet.id} saved to database')
-            
-            for reply in tweet.replies:
-                existing_posted_tweet = posted_tweets_zico_collection.find_one({'text': reply.text})
-                if not existing_posted_tweet:
-                    save_posted_tweet_to_db(reply)
-                    print(f'Posted tweet {reply.id} saved to database')
-
-        more_tweets = await tweets.next()
-        
-        if more_tweets:
-            for tweet in more_tweets:
-                save_posted_tweet_to_db(tweet)
-                print(f'Posted tweet {tweet.id} saved to database')
-                
-                for reply in tweet.replies:
-                    existing_posted_tweet = posted_tweets_zico_collection.find_one({'text': reply.text})
-                    if not existing_posted_tweet:
-                        save_posted_tweet_to_db(reply)
-                        print(f'Posted tweet {reply.id} saved to database')
 
 async def get_tweet_by_id(id):
     tweet = await client.get_tweet_by_id(id)
