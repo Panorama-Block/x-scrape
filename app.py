@@ -264,10 +264,9 @@ async def main():
                 logging.error(f"Error in main loop: {e}")
                 await asyncio.sleep(60)
     
-    await get_posted_tweets()
-    # schedule.every().hour.do(hourly_job)
-    # schedule.every().hour.do(get_posted_tweets)
-    # await check_schedule()
+    schedule.every().hour.do(hourly_job)
+    schedule.every().hour.do(get_posted_tweets)
+    await check_schedule()
 
 if __name__ == "__main__":
     asyncio.run(main())
