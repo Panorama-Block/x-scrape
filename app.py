@@ -243,30 +243,18 @@ async def main():
     for sig in (signal.SIGINT, signal.SIGTERM):
         asyncio.get_event_loop().add_signal_handler(sig, signal_handler)
     
-    async def check_schedule():
-        while running:
-            try:
-                for job in schedule.get_jobs():
-                    if job.should_run:
-                        try:
-                            logging.info(f"Job {job.job_func.__name__} running")
-                        except Exception as e:
-                            logging.error(f"Error running job {job.job_func.__name__}: {e}")
-                            await asyncio.sleep(300)  # retry em 5 minutos
-                            continue
-                
-                next_job = min((job for job in schedule.get_jobs()), key=lambda j: j.next_run)
-                if next_job:
-                    logging.info(f"Next scheduled job: {next_job.job_func.__name__} at {next_job.next_run}")
-                
-                await asyncio.sleep(60)
-            except Exception as e:
-                logging.error(f"Error in main loop: {e}")
-                await asyncio.sleep(60)
-    
+    await get_posted_tweets()
     schedule.every().hour.do(hourly_job)
     schedule.every().hour.do(get_posted_tweets)
-    await check_schedule()
+    
+    while True:
+        try:
+            schedule.run_pending()
+            await asyncio.sleep(60)  # Check every minute
+        except Exception as e:
+            logging.error(f"Scheduling error: {e}")
+            await asyncio.sleep(60)
+            continue
 
 if __name__ == "__main__":
     asyncio.run(main())
