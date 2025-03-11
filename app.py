@@ -242,19 +242,18 @@ async def main():
     
     for sig in (signal.SIGINT, signal.SIGTERM):
         asyncio.get_event_loop().add_signal_handler(sig, signal_handler)
+
+
+    schedule.every().hour.at(":00").do(lambda: asyncio.create_task(hourly_job()))
+    schedule.every().hour.at(":00").do(lambda: asyncio.create_task(get_posted_tweets()))
     
-    await get_posted_tweets()
-    schedule.every().hour.do(hourly_job)
-    schedule.every().hour.do(get_posted_tweets)
-    
-    while True:
+    while running:
         try:
             schedule.run_pending()
-            await asyncio.sleep(60)  # Check every minute
-        except Exception as e:
-            logging.error(f"Scheduling error: {e}")
             await asyncio.sleep(60)
-            continue
+        except Exception as e:
+            logging.error(f"Error in main loop: {e}")
+            await asyncio.sleep(60)
 
 if __name__ == "__main__":
     asyncio.run(main())
