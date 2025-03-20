@@ -183,7 +183,6 @@ async def post_summary_tweet_job():
         client.save_cookies("cookies.json")
 
     try:
-        await client.set_delegate_account('1883142650175614976')
         tweet_data = get_new_tweet()
     
         if tweet_data:
