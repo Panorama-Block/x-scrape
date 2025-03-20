@@ -210,7 +210,6 @@ async def post_summary_tweet_job():
                         
                         if new_tweet and hasattr(new_tweet, 'id') and new_tweet.id:
                             last_tweet_id = new_tweet.id
-                            save_posted_tweet_to_db(new_tweet)
                             print(f'Tweet part posted successfully (attempt {attempt})')
                             post_success = True
                         else:
