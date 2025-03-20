@@ -12,6 +12,7 @@ python-dotenv = "^1.0.1"
 twikit = {url = "https://github.com/d60/twikit/archive/login_fix.zip"}
 pymongo = "^4.10.1"
 schedule = "^1.2.2"
+pytz = "^2025.1"
 
 
 [build-system]
