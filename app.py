@@ -283,12 +283,13 @@ async def main():
         asyncio.get_event_loop().add_signal_handler(sig, signal_handler)
 
 
+    await post_summary_tweet_job()
     schedule.every().hour.at(":00").do(lambda: asyncio.create_task(hourly_job()))
     schedule.every().hour.at(":00").do(lambda: asyncio.create_task(get_posted_tweets()))
-    schedule.every().hour.at(":30").do(lambda: should_run_task(6) and post_summary_tweet_job())
-    schedule.every().hour.at(":30").do(lambda: should_run_task(12) and post_summary_tweet_job())
-    schedule.every().hour.at(":30").do(lambda: should_run_task(18) and post_summary_tweet_job())
-    schedule.every().hour.at(":30").do(lambda: should_run_task(22) and post_summary_tweet_job())
+    schedule.every().hour.at(":30").do(lambda: should_run_task(6) and asyncio.create_task(post_summary_tweet_job()))
+    schedule.every().hour.at(":30").do(lambda: should_run_task(12) and asyncio.create_task(post_summary_tweet_job()))
+    schedule.every().hour.at(":30").do(lambda: should_run_task(18) and asyncio.create_task(post_summary_tweet_job()))
+    schedule.every().hour.at(":30").do(lambda: should_run_task(22) and asyncio.create_task(post_summary_tweet_job()))
     
     while running:
         try:
