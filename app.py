@@ -235,6 +235,8 @@ async def post_summary_tweet_job():
                 {'$set': {'posted': True}}
             )
             
+            await get_posted_tweets()
+            
     except Exception as e:
         print(f"Error in tweet job: {e}")
 
