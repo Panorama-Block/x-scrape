@@ -2,12 +2,14 @@ from itertools import count
 import os
 import asyncio
 import schedule
-import time
 from datetime import datetime
 from dotenv import load_dotenv
+import random
+
+from pymongo import MongoClient
+import pytz
 
 from twikit import Client
-from pymongo import MongoClient
 
 import logging
 import signal
@@ -110,11 +112,12 @@ def get_new_tweet():
     formatted_parts = []
     for i, part in enumerate(tweet_data.get('parts', [])):
         header = "Zico1000x AI here 🤩 this is what leading AI agents said today on X:"
-        footer = f"({i+1}/{len(tweet_data.get('parts', []))})"
-        if i > 0:
-            header = "Continuing..."
+        footer = f"🧵 ({i+1}/{len(tweet_data.get('parts', []))})"
+        if i == 0:
+            formatted_part = f"{header}\n\n{part}\n\n{footer}"
+        else:
+            formatted_part = f"{part}\n\n{footer}"
             
-        formatted_part = f"{header}\n\n{part}\n\n{footer}"
         formatted_parts.append(formatted_part)
     
     return {
@@ -189,16 +192,44 @@ async def post_summary_tweet_job():
         client.save_cookies("cookies.json")
 
     try:
+        await client.set_delegate_account('1883142650175614976')
         tweet_data = get_new_tweet()
     
         if tweet_data:
             last_tweet_id = None
             for part in tweet_data['parts']:
-                new_tweet = await client.create_tweet(part, reply_to=last_tweet_id)
-                last_tweet_id = new_tweet.id
-                save_posted_tweet_to_db(new_tweet)
-                print('Tweet part posted successfully')
-                await asyncio.sleep(5)
+                max_attempts = 3
+                attempt = 0
+                post_success = False
+                
+                while attempt < max_attempts and not post_success:
+                    attempt += 1
+                    try:
+                        print(f"Posting tweet part (attempt {attempt}/{max_attempts})...")
+                        new_tweet = await client.create_tweet(part, reply_to=last_tweet_id)
+                        
+                        if new_tweet and hasattr(new_tweet, 'id') and new_tweet.id:
+                            last_tweet_id = new_tweet.id
+                            save_posted_tweet_to_db(new_tweet)
+                            print(f'Tweet part posted successfully (attempt {attempt})')
+                            post_success = True
+                        else:
+                            print(f"Tweet post attempt {attempt} failed: No valid tweet ID returned")
+                            if attempt < max_attempts:
+                                print(f"Waiting 10 seconds before retry...")
+                                await asyncio.sleep(10)
+                    except Exception as e:
+                        print(f"Error posting tweet (attempt {attempt}): {str(e)}")
+                        if attempt < max_attempts:
+                            print(f"Waiting 10 seconds before retry...")
+                            await asyncio.sleep(10)
+                
+                if not post_success:
+                    raise Exception(f"Failed to post tweet part after {max_attempts} attempts")
+                
+                human_delay = random.uniform(5, 10)
+                print(f"Waiting {human_delay:.2f} seconds before next post...")
+                await asyncio.sleep(human_delay)
             
             tweets_zico_collection.update_one(
                 {'_id': tweet_data['tweet_id']},
@@ -232,6 +263,13 @@ async def hourly_job():
         print(f"Error in hourly job: {e}")
         await asyncio.sleep(5)
 
+def should_run_task(scheduled_utc_hour: int) -> bool:
+    """
+    Verifica se a task deve rodar baseado na hora UTC especificada
+    """
+    utc_now = datetime.now(pytz.UTC)
+    return utc_now.hour == scheduled_utc_hour
+
 async def main():
     running = True
     
@@ -246,6 +284,10 @@ async def main():
 
     schedule.every().hour.at(":00").do(lambda: asyncio.create_task(hourly_job()))
     schedule.every().hour.at(":00").do(lambda: asyncio.create_task(get_posted_tweets()))
+    schedule.every().hour.at(":30").do(lambda: should_run_task(6) and post_summary_tweet_job())
+    schedule.every().hour.at(":30").do(lambda: should_run_task(12) and post_summary_tweet_job())
+    schedule.every().hour.at(":30").do(lambda: should_run_task(18) and post_summary_tweet_job())
+    schedule.every().hour.at(":30").do(lambda: should_run_task(22) and post_summary_tweet_job())
     
     while running:
         try:
