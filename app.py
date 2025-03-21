@@ -5,23 +5,32 @@ import schedule
 from datetime import datetime
 from dotenv import load_dotenv
 import random
+import logging
+import signal
+import sys
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('app.log', encoding='utf-8'),
+        logging.StreamHandler(sys.stdout)
+    ]
+)
 
 from pymongo import MongoClient
 import pytz
 
 from twikit import Client
 
-import logging
-import signal
-
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('app.log'),
-        logging.StreamHandler()
-    ]
-)
+def safe_str(obj):
+    """Convert any object to a string safely, handling encoding issues."""
+    if obj is None:
+        return "None"
+    try:
+        return str(obj).encode('utf-8', errors='replace').decode('utf-8')
+    except:
+        return "[Unprintable object]"
 
 load_dotenv()
 
@@ -56,94 +65,136 @@ def print_formated_tweet(tweet):
     )
 
 def save_tweet_to_db(tweet):
-    tweet_data = {
-        'tweet_id': tweet.id,
-        'username': tweet.user.name,
-        'user_image': tweet.user.profile_image_url,
-        'text': tweet.text,
-        'favorite_count': tweet.favorite_count,
-        'media': tweet.media,
-        'created_at': tweet.created_at,
-        'created_at_datetime': tweet.created_at_datetime
-    }
-    
-    tweets_collection.update_one(
-        {'tweet_id': tweet.id},
-        {'$set': tweet_data},
-        upsert=True
-    )
-    print(f'Tweet {tweet.id} saved to database')
+    try:
+        tweet_text = tweet.text
+        if tweet_text:
+            tweet_text = tweet_text.encode('utf-8', errors='replace').decode('utf-8')
+            
+        tweet_data = {
+            'tweet_id': tweet.id,
+            'username': safe_str(tweet.user.name),
+            'user_image': safe_str(tweet.user.profile_image_url),
+            'text': tweet_text,
+            'favorite_count': tweet.favorite_count,
+            'media': tweet.media,
+            'created_at': tweet.created_at,
+            'created_at_datetime': tweet.created_at_datetime
+        }
+        
+        tweets_collection.update_one(
+            {'tweet_id': tweet.id},
+            {'$set': tweet_data},
+            upsert=True
+        )
+        print(f'Tweet {tweet.id} saved to database')
+    except Exception as e:
+        logging.error(f"Error in save_tweet_to_db: {safe_str(e)}")
     
 def save_posted_tweet_to_db(tweet):
-    tweet_data = {
-    'tweet_id': tweet.id,
-    'username': tweet.user.name,
-    'user_image': tweet.user.profile_image_url,
-    'text': tweet.text,
-    'favorite_count': tweet.favorite_count,
-    'media': tweet.media,
-    'created_at': tweet.created_at,
-    'created_at_datetime': tweet.created_at_datetime
-    }
+    try:
+        tweet_text = tweet.text
+        if tweet_text:
+            tweet_text = tweet_text.encode('utf-8', errors='replace').decode('utf-8')
+            
+        tweet_data = {
+            'tweet_id': tweet.id,
+            'username': safe_str(tweet.user.name),
+            'user_image': safe_str(tweet.user.profile_image_url),
+            'text': tweet_text,
+            'favorite_count': tweet.favorite_count,
+            'media': tweet.media,
+            'created_at': tweet.created_at,
+            'created_at_datetime': tweet.created_at_datetime
+        }
 
-    posted_tweets_zico_collection.update_one(
-        {'tweet_id': tweet.id},
-        {'$set': tweet_data},
-        upsert=True
-    )
-    print(f'Tweet {tweet.id} saved to database')
-    
+        posted_tweets_zico_collection.update_one(
+            {'tweet_id': tweet.id},
+            {'$set': tweet_data},
+            upsert=True
+        )
+        print(f'Tweet {tweet.id} saved to database')
+    except Exception as e:
+        logging.error(f"Error in save_posted_tweet_to_db: {safe_str(e)}")
+
 def get_new_tweet():
-    tweet_data = tweets_zico_collection.find_one({'posted': False}, sort=[('created_at_datetime', -1)])
-    
-    if not tweet_data:
-        print('No unposted tweets found in tweets_zico_collection')
-        return None
+    try:
+        tweet_data = tweets_zico_collection.find_one({'posted': False}, sort=[('created_at_datetime', -1)])
         
-    for part in tweet_data.get('parts', []):
-        existing_posted_tweet = posted_tweets_zico_collection.find_one({'text': part})
-        if existing_posted_tweet:
-            print(f'Part "{part[:30]}..." already exists in posted_tweets_zico_collection. Skipping tweet...')
-            tweets_zico_collection.update_one(
-                {'_id': tweet_data['_id']},
-                {'$set': {'posted': True}}
-            )
+        if not tweet_data:
+            print('No unposted tweets found in tweets_zico_collection')
             return None
-    
-    parts = tweet_data.get('parts', [])
-    
-    return {
-        'parts': parts,
-        'tweet_id': tweet_data['_id']
-    }
+            
+        for part in tweet_data.get('parts', []):
+            safe_part = safe_str(part)
+            existing_posted_tweet = posted_tweets_zico_collection.find_one({'text': safe_part})
+            if existing_posted_tweet:
+                print(f'Part "{safe_part[:30]}..." already exists in posted_tweets_zico_collection. Skipping tweet...')
+                tweets_zico_collection.update_one(
+                    {'_id': tweet_data['_id']},
+                    {'$set': {'posted': True}}
+                )
+                return None
+        
+        parts = tweet_data.get('parts', [])
+        safe_parts = [safe_str(part) for part in parts]
+        
+        return {
+            'parts': safe_parts,
+            'tweet_id': tweet_data['_id']
+        }
+    except Exception as e:
+        logging.error(f"Error in get_new_tweet: {safe_str(e)}")
+        return None
 
 async def get_posted_tweets():
     try:
         client.load_cookies("cookies.json")
-    except:
-        print("cookies not found, login first")
-        await client.login(
-            auth_info_1=USERNAME,
-            auth_info_2=EMAIL,
-            password=PASSWORD
-        )
-        client.save_cookies("cookies.json")
+    except Exception as e:
+        print(f"Cookies not found, login first: {safe_str(e)}")
+        try:
+            await client.login(
+                auth_info_1=USERNAME,
+                auth_info_2=EMAIL,
+                password=PASSWORD
+            )
+            client.save_cookies("cookies.json")
+        except Exception as login_error:
+            logging.error(f"Login error: {safe_str(login_error)}")
+            return
 
     try:
+        print("Starting to fetch tweets...")
         zico_id = '1883142650175614976'
+        print(f"Fetching tweets for user ID: {zico_id}")
         tweets = await client.get_user_tweets(zico_id, 'Tweets')
         
+        print(f"Fetched {len(tweets) if tweets else 0} tweets")
         if tweets:
-            for tweet in tweets:
-                save_posted_tweet_to_db(tweet)
+            for i, tweet in enumerate(tweets):
                 try:
-                    print(tweet.text.encode('utf-8', errors='replace').decode('utf-8'))
-                except Exception as e:
-                    print(f"Error printing tweet text: {e}")
-                print(f'Posted tweet {tweet.id} saved to database')
+                    print(f"Processing tweet {i+1}/{len(tweets)}, ID: {getattr(tweet, 'id', 'unknown')}")
+                    
+                    print(f"Tweet attributes: {dir(tweet)}")
+                    
+                    if hasattr(tweet, 'text') and tweet.text:
+                        print(f"Original tweet text length: {len(tweet.text)}")
+                        print(f"First 50 chars: {tweet.text[:50]}")
+                        
+                    save_posted_tweet_to_db(tweet)
+                    if tweet.text:
+                        safe_text = safe_str(tweet.text)
+                        print(safe_text)
+                    else:
+                        print("[No text]")
+                    print(f'Posted tweet {tweet.id} saved to database')
+                except Exception as tweet_error:
+                    print(f"Error details: {type(tweet_error).__name__}")
+                    logging.error(f"Error processing tweet {getattr(tweet, 'id', 'unknown')}: {safe_str(tweet_error)}")
 
     except Exception as e:
-        logging.error(f"Error in get_posted_tweets: {str(e)}")
+        print(f"Error type: {type(e).__name__}")
+        print(f"Error args: {safe_str(str(e.args))}")
+        logging.error(f"Error in get_posted_tweets: {safe_str(e)}")
         await asyncio.sleep(5)
 
 async def get_tweet_by_id(id):
@@ -212,7 +263,7 @@ async def post_summary_tweet_job():
                                 print(f"Waiting 10 seconds before retry...")
                                 await asyncio.sleep(10)
                     except Exception as e:
-                        print(f"Error posting tweet (attempt {attempt}): {str(e)}")
+                        print(f"Error posting tweet (attempt {attempt}): {safe_str(e)}")
                         if attempt < max_attempts:
                             print(f"Waiting 10 seconds before retry...")
                             await asyncio.sleep(10)
@@ -232,7 +283,7 @@ async def post_summary_tweet_job():
             await get_posted_tweets()
             
     except Exception as e:
-        print(f"Error in tweet job: {e}")
+        print(f"Error in tweet job: {safe_str(e)}")
 
 async def hourly_job():
     print("running hourly job")
@@ -255,7 +306,7 @@ async def hourly_job():
             save_tweet_to_db(tweet)
                 
     except Exception as e:
-        print(f"Error in hourly job: {e}")
+        print(f"Error in hourly job: {safe_str(e)}")
         await asyncio.sleep(5)
 
 def should_run_task(scheduled_utc_hour: int) -> bool:
@@ -266,31 +317,30 @@ def should_run_task(scheduled_utc_hour: int) -> bool:
     return utc_now.hour == scheduled_utc_hour
 
 async def main():
-    running = True
+    def signal_handler(sig, frame):
+        print("Exiting gracefully...")
+        sys.exit(0)
     
-    def signal_handler():
-        nonlocal running
-        running = False
-        logging.info("Stopping scheduler...")
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
     
-    for sig in (signal.SIGINT, signal.SIGTERM):
-        asyncio.get_event_loop().add_signal_handler(sig, signal_handler)
-
-
-    schedule.every().hour.at(":00").do(lambda: asyncio.create_task(hourly_job()))
-    schedule.every().hour.at(":00").do(lambda: asyncio.create_task(get_posted_tweets()))
-    schedule.every().hour.at(":30").do(lambda: should_run_task(6) and asyncio.create_task(post_summary_tweet_job()))
-    schedule.every().hour.at(":30").do(lambda: should_run_task(12) and asyncio.create_task(post_summary_tweet_job()))
-    schedule.every().hour.at(":30").do(lambda: should_run_task(18) and asyncio.create_task(post_summary_tweet_job()))
-    schedule.every().hour.at(":30").do(lambda: should_run_task(22) and asyncio.create_task(post_summary_tweet_job()))
-    
-    while running:
-        try:
-            schedule.run_pending()
-            await asyncio.sleep(60)
-        except Exception as e:
-            logging.error(f"Error in main loop: {e}")
-            await asyncio.sleep(60)
+    try:
+        schedule.every().hour.at(":00").do(lambda: asyncio.create_task(hourly_job()))
+        schedule.every().hour.at(":00").do(lambda: asyncio.create_task(get_posted_tweets()))
+        schedule.every().hour.at(":30").do(lambda: should_run_task(6) and asyncio.create_task(post_summary_tweet_job()))
+        schedule.every().hour.at(":30").do(lambda: should_run_task(12) and asyncio.create_task(post_summary_tweet_job()))
+        schedule.every().hour.at(":30").do(lambda: should_run_task(18) and asyncio.create_task(post_summary_tweet_job()))
+        schedule.every().hour.at(":30").do(lambda: should_run_task(22) and asyncio.create_task(post_summary_tweet_job()))
+        
+        while True:
+            try:
+                schedule.run_pending()
+                await asyncio.sleep(60)
+            except Exception as e:
+                logging.error(f"Error in main loop: {safe_str(e)}")
+                await asyncio.sleep(60)
+    except Exception as e:
+        logging.error(f"Fatal error in main: {safe_str(e)}")
 
 if __name__ == "__main__":
     asyncio.run(main())
