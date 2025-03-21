@@ -31,6 +31,7 @@ PASSWORD = os.getenv('PASSWORD')
 LIST_ID = os.getenv('LIST_ID')
 MONGO_URI = os.getenv('MONGO_URI', 'mongodb://localhost:27017')
 TWEET_ID = os.getenv('TWEET_ID')
+USER_AGENT = os.getenv('USER_AGENT')
 
 mongo_client = MongoClient(MONGO_URI)
 db = mongo_client['twitter_db']
@@ -38,7 +39,7 @@ tweets_collection = db['tweets']
 tweets_zico_collection = db['tweets_zico']
 posted_tweets_zico_collection = db['posted_tweets_zico']
 
-client = Client("pt-BR")
+client = Client(language="pt-BR", user_agent=USER_AGENT)
 
 def print_formated_tweet(tweet):
     print(
@@ -216,7 +217,7 @@ async def post_summary_tweet_job():
                 if not post_success:
                     raise Exception(f"Failed to post tweet part after {max_attempts} attempts")
                 
-                human_delay = random.uniform(5, 10)
+                human_delay = random.uniform(5, 8)
                 print(f"Waiting {human_delay:.2f} seconds before next post...")
                 await asyncio.sleep(human_delay)
             
@@ -279,7 +280,6 @@ async def main():
     schedule.every().hour.at(":30").do(lambda: should_run_task(12) and asyncio.create_task(post_summary_tweet_job()))
     schedule.every().hour.at(":30").do(lambda: should_run_task(18) and asyncio.create_task(post_summary_tweet_job()))
     schedule.every().hour.at(":30").do(lambda: should_run_task(22) and asyncio.create_task(post_summary_tweet_job()))
-    await post_summary_tweet_job()
     
     while running:
         try:

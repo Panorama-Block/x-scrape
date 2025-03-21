@@ -9,10 +9,10 @@ readme = "README.md"
 python = "^3.10"
 pandas = "^2.2.3"
 python-dotenv = "^1.0.1"
-twikit = {url = "https://github.com/d60/twikit/archive/login_fix.zip"}
 pymongo = "^4.10.1"
 schedule = "^1.2.2"
 pytz = "^2025.1"
+twikit = "^2.3.3"
 
 
 [build-system]
