@@ -325,6 +325,7 @@ async def main():
     signal.signal(signal.SIGTERM, signal_handler)
     
     try:
+        await get_posted_tweets()
         schedule.every().hour.at(":00").do(lambda: asyncio.create_task(hourly_job()))
         schedule.every().hour.at(":00").do(lambda: asyncio.create_task(get_posted_tweets()))
         schedule.every().hour.at(":30").do(lambda: should_run_task(6) and asyncio.create_task(post_summary_tweet_job()))
