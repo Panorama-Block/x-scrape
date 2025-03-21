@@ -42,6 +42,9 @@ MONGO_URI = os.getenv('MONGO_URI', 'mongodb://localhost:27017')
 TWEET_ID = os.getenv('TWEET_ID')
 USER_AGENT = os.getenv('USER_AGENT')
 
+if USER_AGENT:
+    USER_AGENT = USER_AGENT.encode('ascii', errors='replace').decode('ascii')
+
 mongo_client = MongoClient(MONGO_URI)
 db = mongo_client['twitter_db']
 tweets_collection = db['tweets']
