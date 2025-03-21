@@ -31,7 +31,6 @@ PASSWORD = os.getenv('PASSWORD')
 LIST_ID = os.getenv('LIST_ID')
 MONGO_URI = os.getenv('MONGO_URI', 'mongodb://localhost:27017')
 TWEET_ID = os.getenv('TWEET_ID')
-USER_AGENT = os.getenv('USER_AGENT')
 
 mongo_client = MongoClient(MONGO_URI)
 db = mongo_client['twitter_db']
@@ -39,7 +38,7 @@ tweets_collection = db['tweets']
 tweets_zico_collection = db['tweets_zico']
 posted_tweets_zico_collection = db['posted_tweets_zico']
 
-client = Client(language="pt-BR", user_agent=USER_AGENT)
+client = Client(language="pt-BR")
 
 def print_formated_tweet(tweet):
     print(
@@ -130,7 +129,9 @@ async def get_posted_tweets():
         client.save_cookies("cookies.json")
 
     try:
-        zico_id = '1883142650175614976'
+        zico_id = '1903080034883055618'
+        # zico_id = await client.get_user_by_screen_name('Zico100x')
+        print(zico_id)
         tweets = await client.get_user_tweets(zico_id, 'Tweets')
         
         if tweets:
@@ -273,13 +274,14 @@ async def main():
     for sig in (signal.SIGINT, signal.SIGTERM):
         asyncio.get_event_loop().add_signal_handler(sig, signal_handler)
 
-
+    await get_posted_tweets()
     schedule.every().hour.at(":00").do(lambda: asyncio.create_task(hourly_job()))
     schedule.every().hour.at(":00").do(lambda: asyncio.create_task(get_posted_tweets()))
-    schedule.every().hour.at(":30").do(lambda: should_run_task(6) and asyncio.create_task(post_summary_tweet_job()))
-    schedule.every().hour.at(":30").do(lambda: should_run_task(12) and asyncio.create_task(post_summary_tweet_job()))
-    schedule.every().hour.at(":30").do(lambda: should_run_task(18) and asyncio.create_task(post_summary_tweet_job()))
-    schedule.every().hour.at(":30").do(lambda: should_run_task(22) and asyncio.create_task(post_summary_tweet_job()))
+    schedule.every().hour.at(":00").do(lambda: asyncio.create_task(get_posted_tweets()))
+    # schedule.every().hour.at(":30").do(lambda: should_run_task(6) and asyncio.create_task(post_summary_tweet_job()))
+    # schedule.every().hour.at(":30").do(lambda: should_run_task(12) and asyncio.create_task(post_summary_tweet_job()))
+    # schedule.every().hour.at(":30").do(lambda: should_run_task(18) and asyncio.create_task(post_summary_tweet_job()))
+    # schedule.every().hour.at(":30").do(lambda: should_run_task(22) and asyncio.create_task(post_summary_tweet_job()))
     
     while running:
         try:
