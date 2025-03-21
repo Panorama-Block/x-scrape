@@ -136,11 +136,14 @@ async def get_posted_tweets():
         if tweets:
             for tweet in tweets:
                 save_posted_tweet_to_db(tweet)
-                print(tweet.text)
+                try:
+                    print(tweet.text.encode('utf-8', errors='replace').decode('utf-8'))
+                except Exception as e:
+                    print(f"Error printing tweet text: {e}")
                 print(f'Posted tweet {tweet.id} saved to database')
 
     except Exception as e:
-        logging.error(f"Error in get_posted_tweets: {e}")
+        logging.error(f"Error in get_posted_tweets: {str(e)}")
         await asyncio.sleep(5)
 
 async def get_tweet_by_id(id):
