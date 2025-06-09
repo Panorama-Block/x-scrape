@@ -76,7 +76,7 @@ def save_tweet_to_db(tweet):
             'user_image': safe_str(tweet.user.profile_image_url),
             'text': tweet_text,
             'favorite_count': tweet.favorite_count,
-            'media': tweet.media,
+            'media': [safe_str(m) if m else None for m in tweet.media] if tweet.media else None,
             'created_at': tweet.created_at,
             'created_at_datetime': tweet.created_at_datetime
         }
@@ -102,7 +102,7 @@ def save_posted_tweet_to_db(tweet):
             'user_image': safe_str(tweet.user.profile_image_url),
             'text': tweet_text,
             'favorite_count': tweet.favorite_count,
-            'media': tweet.media,
+            'media': [safe_str(m) if m else None for m in tweet.media] if tweet.media else None,
             'created_at': tweet.created_at,
             'created_at_datetime': tweet.created_at_datetime
         }
