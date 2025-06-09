@@ -46,7 +46,9 @@ mongo_client = MongoClient(MONGO_URI)
 db = mongo_client['twitter_db']
 tweets_collection = db['tweets']
 tweets_zico_collection = db['tweets_zico']
+tweets_avax_collection = db['tweets_avax']
 posted_tweets_zico_collection = db['posted_tweets_zico']
+posted_tweets_avax_collection = db['posted_tweets_avax']
 
 client = Client(language="pt-BR")
 
@@ -90,7 +92,7 @@ def save_tweet_to_db(tweet):
     except Exception as e:
         logging.error(f"Error in save_tweet_to_db: {safe_str(e)}")
     
-def save_posted_tweet_to_db(tweet):
+def save_posted_tweet_to_db(tweet, collection):
     try:
         tweet_text = tweet.text
         if tweet_text:
@@ -107,7 +109,7 @@ def save_posted_tweet_to_db(tweet):
             'created_at_datetime': tweet.created_at_datetime
         }
 
-        posted_tweets_zico_collection.update_one(
+        collection.update_one(
             {'tweet_id': tweet.id},
             {'$set': tweet_data},
             upsert=True
@@ -165,39 +167,48 @@ async def get_posted_tweets():
     try:
         print("Starting to fetch tweets...")
         zico_id = '1903080034883055618'
-        # zico_id = await client.get_user_by_screen_name('Zico100x')
+        avax_id = '1919388164919373824'
         print(zico_id)
         print(f"Fetching tweets for user ID: {zico_id}")
         tweets = await client.get_user_tweets(zico_id, 'Tweets')
+        tweets_avax = await client.get_user_tweets(avax_id, 'Tweets')
         
         print(f"Fetched {len(tweets) if tweets else 0} tweets")
-        if tweets:
-            for i, tweet in enumerate(tweets):
-                try:
-                    print(f"Processing tweet {i+1}/{len(tweets)}, ID: {getattr(tweet, 'id', 'unknown')}")
-                    
-                    print(f"Tweet attributes: {dir(tweet)}")
-                    
-                    if hasattr(tweet, 'text') and tweet.text:
-                        print(f"Original tweet text length: {len(tweet.text)}")
-                        print(f"First 50 chars: {tweet.text[:50]}")
-                        
-                    save_posted_tweet_to_db(tweet)
-                    if tweet.text:
-                        safe_text = safe_str(tweet.text)
-                        print(safe_text)
-                    else:
-                        print("[No text]")
-                    print(f'Posted tweet {tweet.id} saved to database')
-                except Exception as tweet_error:
-                    print(f"Error details: {type(tweet_error).__name__}")
-                    logging.error(f"Error processing tweet {getattr(tweet, 'id', 'unknown')}: {safe_str(tweet_error)}")
+        print(f"Fetched {len(tweets_avax) if tweets_avax else 0} tweets")
+        
+        process_tweets(tweets, posted_tweets_zico_collection, "Zico")
+        process_tweets(tweets_avax, posted_tweets_avax_collection, "Avax")
 
     except Exception as e:
         print(f"Error type: {type(e).__name__}")
         print(f"Error args: {safe_str(str(e.args))}")
         logging.error(f"Error in get_posted_tweets: {safe_str(e)}")
         await asyncio.sleep(5)
+
+def process_tweets(tweets, collection, source_name=""):
+    if not tweets:
+        return
+        
+    for i, tweet in enumerate(tweets):
+        try:
+            print(f"Processing {source_name} tweet {i+1}/{len(tweets)}, ID: {getattr(tweet, 'id', 'unknown')}")
+            
+            print(f"Tweet attributes: {dir(tweet)}")
+            
+            if hasattr(tweet, 'text') and tweet.text:
+                print(f"Original tweet text length: {len(tweet.text)}")
+                print(f"First 50 chars: {tweet.text[:50]}")
+                
+            save_posted_tweet_to_db(tweet, collection)
+            if tweet.text:
+                safe_text = safe_str(tweet.text)
+                print(safe_text)
+            else:
+                print("[No text]")
+            print(f'Posted tweet {tweet.id} saved to database')
+        except Exception as tweet_error:
+            print(f"Error details: {type(tweet_error).__name__}")
+            logging.error(f"Error processing tweet {getattr(tweet, 'id', 'unknown')}: {safe_str(tweet_error)}")
 
 async def get_tweet_by_id(id):
     tweet = await client.get_tweet_by_id(id)
@@ -222,7 +233,7 @@ async def post_intro_tweet_job():
     intro_tweet = "Hello I'm ZICO1000x - PanoramaBlock 1st AI agent following other leading AI agents on X and summarizing content - so you don't have to follow 20+ crazy agents - #JustFollowMe"
         
     new_tweet = await client.create_tweet(intro_tweet)
-    save_posted_tweet_to_db(new_tweet)
+    save_posted_tweet_to_db(new_tweet, posted_tweets_zico_collection)
     print(f'Intro tweet {new_tweet.id} posted')
             
 async def post_summary_tweet_job():
