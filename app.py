@@ -33,27 +33,6 @@ def safe_str(obj):
     except:
         return "[Unprintable object]"
 
-def extract_media_data(media_item):
-    """Extract relevant data from media objects like Photo."""
-    if media_item is None:
-        return None
-    
-    # Check if it's a Photo object from twikit.media
-    if hasattr(media_item, '__class__') and media_item.__class__.__name__ == 'Photo':
-        return {
-            'type': 'photo',
-            'id': getattr(media_item, 'id', None),
-            'url': getattr(media_item, 'url', None),
-            'width': getattr(media_item, 'width', None),
-            'height': getattr(media_item, 'height', None)
-        }
-    
-    # For other types of media or if it's already a string
-    try:
-        return safe_str(media_item)
-    except:
-        return str(type(media_item))
-
 load_dotenv()
 
 USERNAME = os.getenv('USERNAME')
@@ -99,7 +78,7 @@ def save_tweet_to_db(tweet):
             'user_image': safe_str(tweet.user.profile_image_url),
             'text': tweet_text,
             'favorite_count': tweet.favorite_count,
-            'media': [extract_media_data(m) for m in tweet.media] if tweet.media else None,
+            'media': [safe_str(m) if m else None for m in tweet.media] if tweet.media else None,
             'created_at': tweet.created_at,
             'created_at_datetime': tweet.created_at_datetime
         }
@@ -125,7 +104,7 @@ def save_posted_tweet_to_db(tweet, collection):
             'user_image': safe_str(tweet.user.profile_image_url),
             'text': tweet_text,
             'favorite_count': tweet.favorite_count,
-            'media': [extract_media_data(m) for m in tweet.media] if tweet.media else None,
+            'media': [safe_str(m) if m else None for m in tweet.media] if tweet.media else None,
             'created_at': tweet.created_at,
             'created_at_datetime': tweet.created_at_datetime
         }
