@@ -47,8 +47,10 @@ db = mongo_client['twitter_db']
 tweets_collection = db['tweets']
 tweets_zico_collection = db['tweets_zico']
 tweets_avax_collection = db['tweets_avax']
+tweets_hedera_collection = db['tweets_hedera']
 posted_tweets_zico_collection = db['posted_tweets_zico']
 posted_tweets_avax_collection = db['posted_tweets_avax']
+posted_tweets_hedera_collection = db['posted_tweets_hedera']
 
 client = Client(language="pt-BR")
 
@@ -168,16 +170,20 @@ async def get_posted_tweets():
         print("Starting to fetch tweets...")
         zico_id = '1903080034883055618'
         avax_id = '1919388164919373824'
+        hedera_id = '1961548906950762496'
         print(zico_id)
         print(f"Fetching tweets for user ID: {zico_id}")
         tweets = await client.get_user_tweets(zico_id, 'Tweets')
         tweets_avax = await client.get_user_tweets(avax_id, 'Tweets')
+        tweets_hedera = await client.get_user_tweets(hedera_id, 'Tweets')
         
         print(f"Fetched {len(tweets) if tweets else 0} tweets")
         print(f"Fetched {len(tweets_avax) if tweets_avax else 0} tweets")
+        print(f"Fetched {len(tweets_hedera) if tweets_hedera else 0} tweets")
         
         process_tweets(tweets, posted_tweets_zico_collection, "Zico")
         process_tweets(tweets_avax, posted_tweets_avax_collection, "Avax")
+        process_tweets(tweets_hedera, posted_tweets_hedera_collection, "Hedera")
 
     except Exception as e:
         print(f"Error type: {type(e).__name__}")
